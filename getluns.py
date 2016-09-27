@@ -5,7 +5,7 @@ from pyVim import connect
 from pyVmomi import vim
 import ssl
 
-# first commit1
+# Owner : Momo
 # noinspection PyPackageRequirements
 import tools.cli_momo as cli
 def change_lun_Multipath_to_VMW_PSP_MRU(storage_system):
