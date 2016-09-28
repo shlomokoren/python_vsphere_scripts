@@ -1,36 +1,34 @@
-import atexit
 
+import atexit
 from pyVim import connect
-#from pyVmomi import vmodl
 from pyVmomi import vim
 import ssl
-
 # Owner : Momo
-# noinspection PyPackageRequirements
+#version 0.01b
 import tools.cli_momo as cli
-def change_lun_Multipath_to_VMW_PSP_MRU(storage_system):
-       luns=storage_system.storageDeviceInfo.multipathInfo.lun
-       for lun in luns:
-           if not (':T0') in lun.path[0].name:
-              mpolicy=vim.host.MultipathInfo.LogicalUnitPolicy()   #'VMW_PSP_FIXED' 'VMW_PSP_RR' 'VMW_PSP_MRU'
-              mpolicy.policy='VMW_PSP_MRU'
-              storage_system.SetMultipathLunPolicy(lun.id,mpolicy)
 
-def change_lun_Multipath_to_VMW_PSP_FIXED(storage_system):
-       luns=storage_system.storageDeviceInfo.multipathInfo.lun
-       for lun in luns:
-           if not (':T0') in lun.path[0].name:
-              mpolicy=vim.host.MultipathInfo.LogicalUnitPolicy()   #'VMW_PSP_FIXED' 'VMW_PSP_RR' 'VMW_PSP_MRU'
-              mpolicy.policy='VMW_PSP_FIXED'
-              storage_system.SetMultipathLunPolicy(lun.id,mpolicy)
 
-def change_lun_Multipath_to_VMW_PSP_RR(storage_system):
-       luns=storage_system.storageDeviceInfo.multipathInfo.lun
-       for lun in luns:
-           if not (':T0') in lun.path[0].name:
-              mpolicy=vim.host.MultipathInfo.LogicalUnitPolicy()   #'VMW_PSP_FIXED' 'VMW_PSP_RR' 'VMW_PSP_MRU'
-              mpolicy.policy='VMW_PSP_RR'
-              storage_system.SetMultipathLunPolicy(lun.id,mpolicy)
+
+# Change vmware lun policy path   to 'VMW_PSP_FIXED' 'VMW_PSP_RR' 'VMW_PSP_MRU'
+def  change_lun_manage_path_policy(storage_system,manage_policy,lunsubstr):
+    result= True
+
+    policy_values=['VMW_PSP_FIXED' ,'VMW_PSP_RR', 'VMW_PSP_MRU']
+    if not manage_policy in policy_values:
+        result = False
+        return (result)
+
+    luns=storage_system.storageDeviceInfo.multipathInfo.lun
+    for lun in luns:
+        if  (lunsubstr) in lun.path[0].name:
+            mpolicy=vim.host.MultipathInfo.LogicalUnitPolicy()
+            mpolicy.policy=manage_policy
+            try:
+                storage_system.SetMultipathLunPolicy(lun.id,mpolicy)
+                print('lun '+lun.path[0].name+' change policy to '+manage_policy+' was completed')
+            except :
+                print('lun '+lun.path[0].name+' change policy to '+manage_policy+' Failed')
+    return (result)
 
 
 
@@ -79,11 +77,16 @@ def main():
             storage_system = esxi_host.configManager.storageSystem
 
             print_lun_summary(storage_system)
+            # change the lun policy
             #change_lun_Multipath_to_VMW_PSP_MRU(storage_system)
             #change_lun_Multipath_to_VMW_PSP_FIXED(storage_system)
-            change_lun_Multipath_to_VMW_PSP_RR(storage_system)
+            #change_lun_Multipath_to_VMW_PSP_RR(storage_system)
+            lunsubstr='vmhba1:C0:T3:L0'  #sub string of lun name that need to update
+            manage_policy='VMW_PSP_RR'
+            change_lun_manage_path_policy(storage_system,manage_policy,lunsubstr)
             print(" ---- after change  \n")
             print_lun_summary(storage_system)
+
 
 
 
