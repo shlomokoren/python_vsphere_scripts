@@ -1,15 +1,47 @@
 
 import atexit
 from pyVim import connect
-from pyVmomi import vim
+from pyVmomi import vim,vmodl
+
 import ssl
-# Owner : Momo
-#version 0.01b
-import tools.cli_momo as cli
+import argparse
+import getpass
+
+__author__ =  'Momo'
+
+def get_args():
+    parser = argparse.ArgumentParser(description='Script change esxi servers lun policy')
+
+    parser.add_argument('-s', '--host',
+                        required=True,
+                        action='store',
+                        help='Remote host to connect to')
+
+    parser.add_argument('-o', '--port',
+                        required=False,
+                        action='store',
+                        help="port to use, default 443", default=443)
+
+    parser.add_argument('-u', '--user',
+                        required=True,
+                        action='store',
+                        help='User name to use when connecting to host')
+
+    parser.add_argument('-p', '--password',
+                        required=False,
+                        action='store',
+                        help='Password to use when connecting to host')
 
 
+    args = parser.parse_args()
+    if args.password is None:
+        args.password = getpass.getpass(
+            prompt='Enter password for host %s and user %s: ' %
+                   (args.host, args.user))
+    return args
 
-# Change vmware lun policy path   to 'VMW_PSP_FIXED' 'VMW_PSP_RR' 'VMW_PSP_MRU'
+
+# Change vmware lun policy path to one of 'VMW_PSP_FIXED' 'VMW_PSP_RR' 'VMW_PSP_MRU'
 def  change_lun_manage_path_policy(storage_system,manage_policy,lunsubstr):
     result= True
 
@@ -31,7 +63,6 @@ def  change_lun_manage_path_policy(storage_system,manage_policy,lunsubstr):
     return (result)
 
 
-
 def print_lun_summary(storage_system):
        luns=storage_system.storageDeviceInfo.multipathInfo.lun
        for lun in luns:
@@ -45,21 +76,21 @@ def print_lun_summary(storage_system):
 
 def main():
     """
-    Simple command-line program for listing the virtual machines on a system.
+    Simple command-line program to change esxi luns policy
     """
+    args = get_args()
 
-    args = cli.ConnectVars()
+    print(args)
     s = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
     s.verify_mode = ssl.CERT_NONE
     try:
         service_instance = connect.SmartConnect(host=args.host,
                                                 user=args.user,
                                                 pwd=args.password,
-                                                port=443,
+                                                port=args.port,
                                                 sslContext=s)
 
         atexit.register(connect.Disconnect, service_instance)
-
 
         content = service_instance.RetrieveContent()
         # Search for all ESXi hosts
@@ -76,20 +107,14 @@ def main():
             # All Filesystems on ESXi host
             storage_system = esxi_host.configManager.storageSystem
 
+            print(" ---- before the change  \n")
             print_lun_summary(storage_system)
             # change the lun policy
-            #change_lun_Multipath_to_VMW_PSP_MRU(storage_system)
-            #change_lun_Multipath_to_VMW_PSP_FIXED(storage_system)
-            #change_lun_Multipath_to_VMW_PSP_RR(storage_system)
             lunsubstr='vmhba1:C0:T3:L0'  #sub string of lun name that need to update
-            manage_policy='VMW_PSP_RR'
+            manage_policy='VMW_PSP_RR'   #'VMW_PSP_FIXED' 'VMW_PSP_RR' 'VMW_PSP_MRU'
             change_lun_manage_path_policy(storage_system,manage_policy,lunsubstr)
-            print(" ---- after change  \n")
+            print(" ---- after the change  \n")
             print_lun_summary(storage_system)
-
-
-
-
 
     except vmodl.MethodFault as error:
         print("Caught vmodl fault : " + error.msg)
