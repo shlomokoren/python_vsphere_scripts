@@ -80,7 +80,6 @@ def main():
     """
     args = get_args()
 
-    print(args)
     s = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
     s.verify_mode = ssl.CERT_NONE
     try:
